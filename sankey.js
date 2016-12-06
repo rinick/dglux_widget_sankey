@@ -1,4 +1,4 @@
-define(["lib/js/d3v2/d3.js"],function(d3){
+define(["lib/js/d3/d3.v2.min.js"],function(d3){
     d3.sankey = function() {
       var sankey = {},
           nodeWidth = 24,
@@ -328,12 +328,16 @@ define(["lib/js/d3v2/d3.js"],function(d3){
             return sankeyWidget._blankPropMap;
         };
         sankeyWidget.prototype.onResize = function () {
-          //console.log(this.svg.offsetWidth);
+          this.sankey.size([this.svg[0][0].offsetWidth, this.svg[0][0].offsetHeight]);
+          this.buildLinks(this.rows);
         }
         sankeyWidget.prototype.buildLinks = function(rows) {
           if (rows == null){
             rows = [];
           }
+          this.rows = rows;
+         
+
           // build names;
           var nameDict = {};
           var nodes = [];
@@ -346,13 +350,22 @@ define(["lib/js/d3v2/d3.js"],function(d3){
             nodes.push({"name":str});
           }
           for (var i = 0; i < rows.length; ++i) {
-            addName(rows[i][1]);
-            addName(rows[i][2]);
-            links.push({"source":nameDict[rows[i][1]],"target":nameDict[rows[i][2]],"value":Number(rows[i][3])});
+            var source = rows[i][1];
+            var target = rows[i][2];
+            var value = Number(rows[i][3]);
+            if (value >= 0 && typeof source == 'string' && typeof target == 'string' && source != target) {
+              addName(source);
+              addName(target);
+              links.push({"source":nameDict[source],"target":nameDict[target],"value":value});
+            }
+           
           }
           var svg = this.svg;
           var sankey = this.sankey;
           var path = this.path;
+
+          svg.selectAll('g').remove();
+
           sankey
             .nodes(nodes)
             .links(links)
