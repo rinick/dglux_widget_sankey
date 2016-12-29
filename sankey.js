@@ -1,4 +1,4 @@
-define(["lib/js/d3/d3.v2.min.js"],function(d3){
+define(["d3.v2.min.js"],function(d3){
     d3.sankey = function() {
       var sankey = {},
           nodeWidth = 24,
@@ -294,14 +294,20 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
 
 
     var formatNumber = d3.format(",.0f"),
-    format = function(d) { return formatNumber(d) + " TWh"; },
+    format = function(d) { return formatNumber(d) + " "; },
     color = d3.scale.category20();
 
     var sankey = {}
     var sankeyWidget = (function (_super) {
         __extends(sankeyWidget, _super);
-        function sankeyWidget(div) {
-            _super.call(this, div);
+        function sankeyWidget(div, model) {
+            _super.call(this, div, model);
+
+            this.nodeColor = 'red';
+            this.linkColor = 'blue';
+            this.linkAlpha = '0.2';
+            this.labelColor = 'black';
+
             this.svg = d3.select(div).append("svg")
               .attr("width", "100%")
               .attr("height", "100%");
@@ -316,10 +322,17 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
             return {
                 "name": "",
                 "size":"sensor",
-                "variables": [{ "t": "string", "n": "colorStr" }, { "t": "tabledata", "n": "table" }],
+                "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
+                { "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" }],
                 "layout": {
                     "type": "vbox",
-                    "children": ["colorStr", "table"]
+                    "children": ["data",{
+                      "type": "hbox",
+                      "children": ["nodeColor","labelColor"]
+                     },{
+                      "type": "hbox",
+                      "children": ["linkColor","linkAlpha"]
+                     },"currentItem","currentLinkIndex"]
                 }
             };
         };
@@ -328,7 +341,7 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
             return sankeyWidget._blankPropMap;
         };
         sankeyWidget.prototype.onResize = function () {
-          this.sankey.size([this.svg[0][0].offsetWidth, this.svg[0][0].offsetHeight]);
+          this.sankey.size([this.parentDiv.offsetWidth, this.parentDiv.offsetHeight]);
           this.buildLinks(this.rows);
         }
         sankeyWidget.prototype.buildLinks = function(rows) {
@@ -353,23 +366,46 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
             var source = rows[i][1];
             var target = rows[i][2];
             var value = Number(rows[i][3]);
-            if (value >= 0 && typeof source == 'string' && typeof target == 'string' && source != target) {
-              addName(source);
-              addName(target);
-              links.push({"source":nameDict[source],"target":nameDict[target],"value":value});
+            if (value >= 0 &&  source != null && typeof target != null) {
+              source = source.toString();
+              target = target.toString();
+              if (source != target) {
+                addName(source);
+                addName(target);
+                links.push({"source":nameDict[source],"target":nameDict[target],"value":value});
+              }
             }
            
           }
           var svg = this.svg;
           var sankey = this.sankey;
           var path = this.path;
+          var parentDiv = this.parentDiv;
 
           svg.selectAll('g').remove();
 
+          function handleItemMouseOver(e){
+            console.log('handleItemMouseOver');
+            console.log(e)
+
+          }
+          function handleItemMouseOut(e){
+            console.log('handleItemMouseOut');
+            console.log(e)
+          }
+          function handleLinkMouseOver(e){
+            console.log('handleLinkMouseOver');
+            console.log(e)
+
+          }
+          function handleLinkMouseOut(e){
+            console.log('handleLinkMouseOut');
+            console.log(e)
+          }
           sankey
             .nodes(nodes)
             .links(links)
-            .layout(32, svg[0][0].offsetWidth, svg[0][0].offsetHeight);
+            .layout(32, this.parentDiv.offsetWidth, this.parentDiv.offsetHeight);
 
           var link = svg.append("g").selectAll(".link")
               .data(links)
@@ -378,8 +414,8 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
               .attr("d", path)
               .style("stroke-width", function(d) { return Math.max(1, d.dy); })
               .style("fill", "none")
-              .style("stroke", "#000")
-              .style("stroke-opacity", ".2")
+              .style("stroke", this.linkColor)
+              .style("stroke-opacity", this.linkAlpha)
               .sort(function(a, b) { return b.dy - a.dy; });
 
           link.append("title")
@@ -393,13 +429,14 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
             .call(d3.behavior.drag()
               .origin(function(d) { return d; })
               .on("dragstart", function() { this.parentNode.appendChild(this); })
-              .on("drag", dragmove));
+              .on("drag", dragmove))
+              .on("mouseover", handleItemMouseOver)
+              .on("mouseout", handleItemMouseOut);
 
           node.append("rect")
               .attr("height", function(d) { return d.dy; })
               .attr("width", sankey.nodeWidth())
-              .style("fill", function(d) { return d.color = color(d.name.replace(/ .*/, "")); })
-              .style("stroke", function(d) { return d3.rgb(d.color).darker(2); })
+              .style("fill", this.nodeColor)
             .append("title")
               .text(function(d) { return d.name + "\n" + format(d.value); });
 
@@ -409,35 +446,64 @@ define(["lib/js/d3/d3.v2.min.js"],function(d3){
               .attr("dy", ".35em")
               .attr("text-anchor", "end")
               .attr("transform", null)
+              .attr("fill", this.labelColor)
               .text(function(d) { return d.name; })
-            .filter(function(d) { return d.x < svg[0][0].offsetWidth / 2; })
+            .filter(function(d) { return d.x < parentDiv.offsetWidth / 2; })
               .attr("x", 6 + sankey.nodeWidth())
-              .attr("text-anchor", "start");
-
+              .attr("text-anchor", "start")
+              .on("mouseover", handleLinkMouseOver)
+              .on("mouseout", handleLinkMouseOver);
           function dragmove(d) {
-            d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(svg[0][0].offsetHeight - d.dy, d3.event.y))) + ")");
+            d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(parentDiv.offsetHeight - d.dy, d3.event.y))) + ")");
             sankey.relayout();
             link.attr("d", path);
           }
 
         }
         sankeyWidget._blankPropMap = {
-            "colorStr": function (widget, value) {
-              console.log(value);
-                widget.svg.style.background = value;
-            },
-            "table": function (widget, value) {
+            "data": function (widget, value) {
                 widget.buildLinks(dgluxjs.getTableRows(value));
+            },
+            "nodeColor" : function (widget, value) {
+              if (typeof value == 'string') {
+                widget.nodeColor = value;
+              } else if (typeof value == 'number') {
+                widget.nodeColor = "#" + (0x1000000 + value).toString(16).slice(1);
+              }
+              
+                widget.buildLinks(widget.rows);
+            },
+            "labelColor" : function (widget, value) {
+              if (typeof value == 'string') {
+                widget.labelColor = value;
+              } else if (typeof value == 'number') {
+                widget.labelColor = "#" + (0x1000000 + value).toString(16).slice(1);
+              }
+              
+                widget.buildLinks(widget.rows);
+            },
+            "linkColor" : function (widget, value) {
+              if (typeof value == 'string') {
+                widget.linkColor = value;
+              } else if (typeof value == 'number') {
+                widget.linkColor = "#" + (0x1000000 + value).toString(16).slice(1);
+              }
+                widget.buildLinks(widget.rows);
+            },
+            "linkAlpha" : function (widget, value) {
+              if (typeof value == 'number') {
+                widget.linkAlpha = value.toString();
+              }
+                widget.buildLinks(widget.rows);
             }
         };
         return sankeyWidget;
     }(dgluxjs.Widget));
     sankey.sankeyWidget = sankeyWidget;
-    function create(div) {
-        console.log(d3);
-        return new sankeyWidget(div);
+    function create(div, model) {
+        return new sankeyWidget(div, model);
     }
-    sankey.create = create;
+    sankey.dgNewWidget = create;
 
     return sankey;
 
