@@ -372,7 +372,7 @@ define(["d3.v2.min.js"],function(d3){
               if (source != target) {
                 addName(source);
                 addName(target);
-                links.push({"source":nameDict[source],"target":nameDict[target],"value":value});
+                links.push({"source":nameDict[source],"target":nameDict[target],"value":value,"idx":i});
               }
             }
            
@@ -381,26 +381,20 @@ define(["d3.v2.min.js"],function(d3){
           var sankey = this.sankey;
           var path = this.path;
           var parentDiv = this.parentDiv;
-
+          var widget = this;
           svg.selectAll('g').remove();
 
           function handleItemMouseOver(e){
-            console.log('handleItemMouseOver');
-            console.log(e)
-
+             widget.updateModelValue('currentItem', e.name);
           }
           function handleItemMouseOut(e){
-            console.log('handleItemMouseOut');
-            console.log(e)
+            widget.updateModelValue('currentItem', null);
           }
           function handleLinkMouseOver(e){
-            console.log('handleLinkMouseOver');
-            console.log(e)
-
+           widget.updateModelValue('currentLinkIndex', e.idx);
           }
           function handleLinkMouseOut(e){
-            console.log('handleLinkMouseOut');
-            console.log(e)
+            widget.updateModelValue('currentLinkIndex', null);
           }
           sankey
             .nodes(nodes)
@@ -416,7 +410,9 @@ define(["d3.v2.min.js"],function(d3){
               .style("fill", "none")
               .style("stroke", this.linkColor)
               .style("stroke-opacity", this.linkAlpha)
-              .sort(function(a, b) { return b.dy - a.dy; });
+              .sort(function(a, b) { return b.dy - a.dy; })
+              .on("mouseover", handleLinkMouseOver)
+              .on("mouseout", handleLinkMouseOut);
 
           link.append("title")
               .text(function(d) { return d.source.name + " → " + d.target.name + "\n" + format(d.value); });
@@ -450,9 +446,7 @@ define(["d3.v2.min.js"],function(d3){
               .text(function(d) { return d.name; })
             .filter(function(d) { return d.x < parentDiv.offsetWidth / 2; })
               .attr("x", 6 + sankey.nodeWidth())
-              .attr("text-anchor", "start")
-              .on("mouseover", handleLinkMouseOver)
-              .on("mouseout", handleLinkMouseOver);
+              .attr("text-anchor", "start");
           function dragmove(d) {
             d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(parentDiv.offsetHeight - d.dy, d3.event.y))) + ")");
             sankey.relayout();
