@@ -322,17 +322,23 @@ define(["d3.v2.min.js"],function(d3){
             return {
                 "name": "",
                 "size":"sensor",
-                "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
-                { "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" }],
+                "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "selectedColor" },{ "t": "color", "n": "hoveredColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
+                { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" }],
                 "layout": {
                     "type": "vbox",
-                    "children": ["data",{
+                    "children": ["data",
+                    "labelColor",
+                     {
                       "type": "hbox",
-                      "children": ["nodeColor","labelColor"]
-                     },{
+                      "children": ["nodeColor","selectedColor", "hoveredColor"]
+                     },
+                     {
                       "type": "hbox",
                       "children": ["linkColor","linkAlpha"]
-                     },"currentItem","currentLinkIndex"]
+                     },
+                     "selectedItem",
+                     "currentItem",
+                     "currentLinkIndex"]
                 }
             };
         };
@@ -384,10 +390,43 @@ define(["d3.v2.min.js"],function(d3){
           var widget = this;
           svg.selectAll('g').remove();
 
+          var currentItem;
+          var selectedItem;
+          function handleItemClick(e){
+            if (selectedItem && selectedItem != d3.event.target) {
+              selectedItem.style.fill = widget.nodeColor;
+            }
+            selectedItem = d3.event.target;
+            if (widget.selectedColor) {
+              currentItem.style.fill = widget.selectedColor;
+            }
+            
+            widget.updateModelValue('selectedItem', e.name);
+          }
           function handleItemMouseOver(e){
-             widget.updateModelValue('currentItem', e.name);
+            if (currentItem && currentItem != d3.event.target) {
+              if (currentItem == selectedItem && widget.selectedColor) {
+                currentItem.style.fill = widget.selectedColor;
+              } else {
+                currentItem.style.fill = widget.nodeColor;
+              }
+            }
+            currentItem = d3.event.target;
+            if (widget.hoveredColor) {
+              currentItem.style.fill = widget.hoveredColor;
+            }
+            
+            widget.updateModelValue('currentItem', e.name);
           }
           function handleItemMouseOut(e){
+            if (currentItem) {
+              if (currentItem == selectedItem && widget.selectedColor) {
+                currentItem.style.fill = widget.selectedColor;
+              } else {
+                currentItem.style.fill = widget.nodeColor;
+              }
+            }
+            currentItem = null;
             widget.updateModelValue('currentItem', null);
           }
           function handleLinkMouseOver(e){
@@ -427,7 +466,8 @@ define(["d3.v2.min.js"],function(d3){
               .on("dragstart", function() { this.parentNode.appendChild(this); })
               .on("drag", dragmove))
               .on("mouseover", handleItemMouseOver)
-              .on("mouseout", handleItemMouseOut);
+              .on("mouseout", handleItemMouseOut)
+              .on("mousedown", handleItemClick);
 
           node.append("rect")
               .attr("height", function(d) { return d.dy; })
@@ -456,6 +496,9 @@ define(["d3.v2.min.js"],function(d3){
         }
         sankeyWidget._blankPropMap = {
             "data": function (widget, value) {
+                widget.updateModelValue('currentLinkIndex', null);
+                widget.updateModelValue('currentItem', null);
+                widget.updateModelValue('selectedItem', null);
                 widget.buildLinks(dgluxjs.getTableRows(value));
             },
             "nodeColor" : function (widget, value) {
@@ -463,6 +506,24 @@ define(["d3.v2.min.js"],function(d3){
                 widget.nodeColor = value;
               } else if (typeof value == 'number') {
                 widget.nodeColor = "#" + (0x1000000 + value).toString(16).slice(1);
+              }
+              
+                widget.buildLinks(widget.rows);
+            },
+            "hoveredColor" : function (widget, value) {
+              if (typeof value == 'string') {
+                widget.hoveredColor = value;
+              } else if (typeof value == 'number') {
+                widget.hoveredColor = "#" + (0x1000000 + value).toString(16).slice(1);
+              }
+              
+                widget.buildLinks(widget.rows);
+            },
+            "selectedColor" : function (widget, value) {
+              if (typeof value == 'string') {
+                widget.selectedColor = value;
+              } else if (typeof value == 'number') {
+                widget.selectedColor = "#" + (0x1000000 + value).toString(16).slice(1);
               }
               
                 widget.buildLinks(widget.rows);
