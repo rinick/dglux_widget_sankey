@@ -323,7 +323,7 @@ define(["d3.v2.min.js"],function(d3){
                 "name": "",
                 "size":"sensor",
                 "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "selectedColor" },{ "t": "color", "n": "hoveredColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
-                { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" }],
+                { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" },{ "t": "string", "n": "filter" }],
                 "layout": {
                     "type": "vbox",
                     "children": ["data",
@@ -338,7 +338,8 @@ define(["d3.v2.min.js"],function(d3){
                      },
                      "selectedItem",
                      "currentItem",
-                     "currentLinkIndex"]
+                     "currentLinkIndex",
+                     "filter"]
                 }
             };
         };
@@ -350,6 +351,67 @@ define(["d3.v2.min.js"],function(d3){
           this.sankey.size([this.parentDiv.offsetWidth, this.parentDiv.offsetHeight]);
           this.buildLinks(this.rows);
         }
+
+        sankeyWidget.prototype.updateSelectedItemVal = function(val) {
+          this.selectedItemVal = val;
+          this.updateModelValue('selectedItem',this.selectedItemVal);
+        }
+
+        sankeyWidget.prototype.handleSelect = function(target, name) {
+            if (this.selectedItem && this.selectedItem != target) {
+              this.selectedItem.style.fill = this.nodeColor;
+            }
+            this.selectedItem = target;
+            if (this.selectedColor && this.selectedItem) {
+              this.selectedItem.style.fill = this.selectedColor;
+            }
+            
+            this.updateSelectedItemVal(name);
+          }
+        sankeyWidget.prototype.applyFilter = function() {
+          if (this.snodedata && this.slinks) {
+            var filter = null;
+            if (typeof this.nodeFilter == 'string' && this.nodeFilter != '') {
+              filter = this.nodeFilter.split(',');
+            }
+            if (filter == null) {
+              for (var i = 0; i < this.snodes.length; ++i) {
+                this.snodes[i].style.display = '';
+              } 
+              for (var i = 0; i < this.slinks.length; ++i) {
+                this.slinks[i].style.display = '';
+              } 
+            } else {
+              var expandFilter = filter.slice(0)
+              for (var i = 0; i < this.slinks.length; ++i) {
+                  var name1 = this.slinkdata[i].source.name;
+                  var name2 = this.slinkdata[i].target.name;
+                 if (filter.indexOf(name1) > -1 || filter.indexOf(name2) > -1) {
+                  this.slinks[i].style.display = '';
+                  // expand the filter to any node that's connected to the filtered nodes
+                  if (expandFilter.indexOf(name1) < 0) {
+                    expandFilter.push(name1);
+                  } else if (expandFilter.indexOf(name2) < 0) {
+                    expandFilter.push(name2);
+                  }
+                } else {
+                  this.slinks[i].style.display = 'none';
+                }
+              } 
+              for (var i = 0; i < this.snodes.length; ++i) {
+                if (expandFilter.indexOf(this.snodedata[i].name) > -1) {
+                  this.snodes[i].style.display = '';
+                } else {
+                  this.snodes[i].style.display = 'none';
+                }
+                
+              } 
+
+            }
+          }
+
+        }
+
         sankeyWidget.prototype.buildLinks = function(rows) {
           if (rows == null){
             rows = [];
@@ -391,21 +453,13 @@ define(["d3.v2.min.js"],function(d3){
           svg.selectAll('g').remove();
 
           var currentItem;
-          var selectedItem;
+
           function handleItemClick(e){
-            if (selectedItem && selectedItem != d3.event.target) {
-              selectedItem.style.fill = widget.nodeColor;
-            }
-            selectedItem = d3.event.target;
-            if (widget.selectedColor) {
-              currentItem.style.fill = widget.selectedColor;
-            }
-            
-            widget.updateModelValue('selectedItem', e.name);
+            widget.handleSelect(d3.event.target, e.name);
           }
           function handleItemMouseOver(e){
             if (currentItem && currentItem != d3.event.target) {
-              if (currentItem == selectedItem && widget.selectedColor) {
+              if (currentItem == widget.selectedItem && widget.selectedColor) {
                 currentItem.style.fill = widget.selectedColor;
               } else {
                 currentItem.style.fill = widget.nodeColor;
@@ -420,7 +474,7 @@ define(["d3.v2.min.js"],function(d3){
           }
           function handleItemMouseOut(e){
             if (currentItem) {
-              if (currentItem == selectedItem && widget.selectedColor) {
+              if (currentItem == widget.selectedItem && widget.selectedColor) {
                 currentItem.style.fill = widget.selectedColor;
               } else {
                 currentItem.style.fill = widget.nodeColor;
@@ -435,10 +489,7 @@ define(["d3.v2.min.js"],function(d3){
           function handleLinkMouseOut(e){
             widget.updateModelValue('currentLinkIndex', null);
           }
-          sankey
-            .nodes(nodes)
-            .links(links)
-            .layout(32, this.parentDiv.offsetWidth, this.parentDiv.offsetHeight);
+          sankey.nodes(nodes).links(links).layout(32, this.parentDiv.offsetWidth, this.parentDiv.offsetHeight);
 
           var link = svg.append("g").selectAll(".link")
               .data(links)
@@ -492,13 +543,22 @@ define(["d3.v2.min.js"],function(d3){
             sankey.relayout();
             link.attr("d", path);
           }
+          var snodes = svg.selectAll('.node');
+          var slinks = svg.selectAll('.link');
+          this.snodedata = snodes.data();
+          this.slinkdata = slinks.data();
+          this.snodes = snodes[0];
+          this.slinks = slinks[0];
 
+          if (widget.nodeFilter) {
+            widget.applyFilter();
+          }
         }
         sankeyWidget._blankPropMap = {
             "data": function (widget, value) {
                 widget.updateModelValue('currentLinkIndex', null);
                 widget.updateModelValue('currentItem', null);
-                widget.updateModelValue('selectedItem', null);
+                widget.updateSelectedItemVal(null);
                 widget.buildLinks(dgluxjs.getTableRows(value));
             },
             "nodeColor" : function (widget, value) {
@@ -550,7 +610,27 @@ define(["d3.v2.min.js"],function(d3){
                 widget.linkAlpha = value.toString();
               }
                 widget.buildLinks(widget.rows);
-            }
+            },
+            'selectedItem' :function (widget, value) {
+              if (value != widget.selectedItemVal) {
+                for (var i = 0; i < widget.snodedata.length; ++i) {
+                    if (widget.snodedata[i].name == value) {
+                      break;
+                    }
+                }
+                if (i < widget.snodedata.length) {
+                    widget.handleSelect(widget.snodes[i].childNodes[0], value);
+                } else {
+                  widget.handleSelect(null, value);
+                }
+              }
+            },
+            'filter' :function (widget, value) {
+              if (value != widget.nodeFilter) {
+                widget.nodeFilter = value;
+                widget.applyFilter();
+              }
+            },
         };
         return sankeyWidget;
     }(dgluxjs.Widget));
