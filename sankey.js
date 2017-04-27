@@ -542,7 +542,7 @@ define(["d3.v2.min.js"],function(d3){
               .text(function(d) { 
                 var r1 = (d.value * 100/ d.source['total']).toFixed(1);
                 var r2 = (d.value * 100/ d.target['total']).toFixed(1);
-                return d.source.name + " (" + r1 + "%) → "+d.target.name+ " (" + r2 + "%)\n"+format(d.value);
+                return d.source.name + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.name + " " + format(d.value) + "(" + r2 + "%)";
               });
 
           var node = svg.append("g").selectAll(".node")
