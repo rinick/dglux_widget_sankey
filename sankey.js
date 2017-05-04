@@ -327,7 +327,7 @@ define(["d3.v2.min.js"],function(d3){
                 "size":"sensor",
                 "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "selectedColor" },{ "t": "color", "n": "linkSelectedColor" },{ "t": "color", "n": "hoveredColor" },
                   { "t": "color", "n": "linkHoveredColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
-                  { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" },{ "t": "string", "n": "filter" },{ "t": "trigger", "n": "refresh" }],
+                  { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" },{ "t": "string", "n": "filter" },{ "t": "trigger", "n": "refresh" },{ "t": "string", "n": "currentLinkInfo" }],
                 "layout": {
                     "type": "vbox",
                     "children": ["data",
@@ -348,8 +348,10 @@ define(["d3.v2.min.js"],function(d3){
                      "selectedItem",
                      "currentItem",
                      "currentLinkIndex",
+                     "currentLinkInfo",
                      "filter",
-                     "refresh"]
+                     "refresh"
+                     ]
                 }
             };
         };
@@ -514,6 +516,7 @@ define(["d3.v2.min.js"],function(d3){
            widget.updateModelValue('currentLinkIndex', e.idx);
             if (widget.linkHoveredColor) {
               d3.event.target.style.stroke = widget.linkHoveredColor;
+              widget.updateModelValue('currentLinkInfo',e.tooltip);
             }
           }
           function handleLinkMouseOut(e){
@@ -523,10 +526,16 @@ define(["d3.v2.min.js"],function(d3){
             } else {
                   d3.event.target.style.stroke = widget.linkColor;
             }
-            
+            widget.updateModelValue('currentLinkInfo',null);
           }
           sankey.nodes(nodes).links(links).layout(32, this.parentDiv.offsetWidth, this.parentDiv.offsetHeight-marginSize);
 
+          for (var i = 0; i < links.length; ++i) {
+            var d = links[i];
+            var r1 = (d.value * 100/ d.source['total']).toFixed(1);
+            var r2 = (d.value * 100/ d.target['total']).toFixed(1);
+            d.tooltip = d.source.name + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.name + " " + format(d.value) + "(" + r2 + "%)";
+          }
           var link = svg.append("g").selectAll(".link")
               .data(links)
             .enter().append("path")
@@ -543,9 +552,7 @@ define(["d3.v2.min.js"],function(d3){
 
           link.append("title")
               .text(function(d) { 
-                var r1 = (d.value * 100/ d.source['total']).toFixed(1);
-                var r2 = (d.value * 100/ d.target['total']).toFixed(1);
-                return d.source.name + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.name + " " + format(d.value) + "(" + r2 + "%)";
+                return d.tooltip;
               });
 
           var node = svg.append("g").selectAll(".node")
