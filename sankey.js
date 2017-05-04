@@ -327,7 +327,7 @@ define(["d3.v2.min.js"],function(d3){
                 "size":"sensor",
                 "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "selectedColor" },{ "t": "color", "n": "linkSelectedColor" },{ "t": "color", "n": "hoveredColor" },
                   { "t": "color", "n": "linkHoveredColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
-                  { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" },{ "t": "string", "n": "filter" }],
+                  { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" },{ "t": "string", "n": "filter" },{ "t": "trigger", "n": "refresh" }],
                 "layout": {
                     "type": "vbox",
                     "children": ["data",
@@ -348,7 +348,8 @@ define(["d3.v2.min.js"],function(d3){
                      "selectedItem",
                      "currentItem",
                      "currentLinkIndex",
-                     "filter"]
+                     "filter",
+                     "refresh"]
                 }
             };
         };
@@ -686,6 +687,11 @@ define(["d3.v2.min.js"],function(d3){
               if (value != widget.nodeFilter) {
                 widget.nodeFilter = value;
                 widget.applyFilter();
+              }
+            },
+            'refresh' :function (widget, value) {
+              if (value != null) {
+               widget.buildLinks(widget.rows);
               }
             },
         };
