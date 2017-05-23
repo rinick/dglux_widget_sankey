@@ -315,10 +315,12 @@ define(["d3.v2.min.js"],function(d3){
               .style("margin-top", (marginSize/2) + "px")
               .style("overflow", "visible");
 
+            this.width = div.offsetWidth;
+            this.height = div.offsetHeight;
             this.sankey = d3.sankey()
               .nodeWidth(15)
               .nodePadding(10)
-              .size([div.offsetWidth, div.offsetHeight-marginSize]);
+              .size([this.width, this.height-marginSize]);
             this.path = this.sankey.link();
         }
         sankeyWidget.prototype.getDefinition = function () {
@@ -360,7 +362,9 @@ define(["d3.v2.min.js"],function(d3){
             return sankeyWidget._blankPropMap;
         };
         sankeyWidget.prototype.onResize = function () {
-          this.sankey.size([this.parentDiv.offsetWidth, this.parentDiv.offsetHeight-marginSize]);
+          this.width = this.parentDiv.offsetWidth;
+          this.height = this.parentDiv.offsetHeight;
+          this.sankey.size([this.width, this.height-marginSize]);
           this.buildLinks(this.rows);
         }
 
@@ -528,7 +532,7 @@ define(["d3.v2.min.js"],function(d3){
             }
             widget.updateModelValue('currentLinkInfo',null);
           }
-          sankey.nodes(nodes).links(links).layout(32, this.parentDiv.offsetWidth, this.parentDiv.offsetHeight-marginSize);
+          sankey.nodes(nodes).links(links).layout(32, this.width, this.height-marginSize);
 
           for (var i = 0; i < links.length; ++i) {
             var d = links[i];
@@ -583,11 +587,11 @@ define(["d3.v2.min.js"],function(d3){
               .attr("transform", null)
               .attr("fill", this.labelColor)
               .text(function(d) { return d.name; })
-            .filter(function(d) { return d.x < parentDiv.offsetWidth / 2; })
+            .filter(function(d) { return d.x < widget.width / 2; })
               .attr("x", 6 + sankey.nodeWidth())
               .attr("text-anchor", "start");
           function dragmove(d) {
-            d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(parentDiv.offsetHeight-marginSize - d.dy, d3.event.y))) + ")");
+            d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(widget.height-marginSize - d.dy, d3.event.y))) + ")");
             sankey.relayout();
             link.attr("d", path);
           }
