@@ -570,7 +570,7 @@ define(["d3.v2.min.js"],function(d3){
               .on("drag", dragmove))
               .on("mouseover", handleItemMouseOver)
               .on("mouseout", handleItemMouseOut)
-              .on("mousedown", handleItemClick);
+              .on("mousedown", handleItemClick).on("touchstart", handleItemClick);
 
           node.append("rect")
               .attr("height", function(d) { return d.dy; })
@@ -591,6 +591,7 @@ define(["d3.v2.min.js"],function(d3){
               .attr("x", 6 + sankey.nodeWidth())
               .attr("text-anchor", "start");
           function dragmove(d) {
+            if (d3.event.y != d3.event.y) return;
             d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(widget.height-marginSize - d.dy, d3.event.y))) + ")");
             sankey.relayout();
             link.attr("d", path);
