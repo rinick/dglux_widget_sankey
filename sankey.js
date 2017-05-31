@@ -320,19 +320,21 @@ define(["d3.v2.min.js"],function(d3){
             this.sankey = d3.sankey()
               .nodeWidth(15)
               .nodePadding(10)
-              .size([this.width, this.height-marginSize]);
+              .size([div.offsetWidth | this.width, div.offsetHeight|this.height-marginSize]);
             this.path = this.sankey.link();
         }
         sankeyWidget.prototype.getDefinition = function () {
             return {
                 "name": "",
                 "size":"sensor",
-                "variables": [{ "t": "tabledata", "n": "data" },{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "selectedColor" },{ "t": "color", "n": "linkSelectedColor" },{ "t": "color", "n": "hoveredColor" },
+                "def_tooltip":false,
+                "variables": [{ "t": "tabledata", "n": "data" },{ "t": "bool", "n": "def_tooltip"},{ "t": "color", "n": "nodeColor" },{ "t": "color", "n": "selectedColor" },{ "t": "color", "n": "linkSelectedColor" },{ "t": "color", "n": "hoveredColor" },
                   { "t": "color", "n": "linkHoveredColor" },{ "t": "color", "n": "labelColor" },{ "t": "color", "n": "linkColor" },{ "t": "number", "n": "linkAlpha","minimum":0, "maximum":1 },
                   { "t": "string", "n": "selectedItem" },{ "t": "string", "n": "currentItem" },{ "t": "string", "n": "currentLinkIndex" },{ "t": "string", "n": "filter" },{ "t": "trigger", "n": "refresh" },{ "t": "string", "n": "currentLinkInfo" }],
                 "layout": {
                     "type": "vbox",
                     "children": ["data",
+                    "def_tooltip",
                     "labelColor",
                      "nodeColor",
                      {
@@ -364,7 +366,7 @@ define(["d3.v2.min.js"],function(d3){
         sankeyWidget.prototype.onResize = function () {
           this.width = this.parentDiv.offsetWidth;
           this.height = this.parentDiv.offsetHeight;
-          this.sankey.size([this.width, this.height-marginSize]);
+          this.sankey.size([this.parentDiv.offsetWidth | this.width, this.parentDiv.offsetHeight|this.height-marginSize]);
           this.buildLinks(this.rows);
         }
 
@@ -520,7 +522,7 @@ define(["d3.v2.min.js"],function(d3){
            widget.updateModelValue('currentLinkIndex', e.idx);
             if (widget.linkHoveredColor) {
               d3.event.target.style.stroke = widget.linkHoveredColor;
-              widget.updateModelValue('currentLinkInfo',e.tooltip);
+              widget.updateModelValue('currentLinkInfo',e._tooltip);
             }
           }
           function handleLinkMouseOut(e){
@@ -532,13 +534,22 @@ define(["d3.v2.min.js"],function(d3){
             }
             widget.updateModelValue('currentLinkInfo',null);
           }
-          sankey.nodes(nodes).links(links).layout(32, this.width, this.height-marginSize);
+          sankey.nodes(nodes).links(links).layout(32, this.parentDiv.offsetWidth | this.width, this.parentDiv.offsetHeight|this.height-marginSize);
 
           for (var i = 0; i < links.length; ++i) {
             var d = links[i];
             var r1 = (d.value * 100/ d.source['total']).toFixed(1);
             var r2 = (d.value * 100/ d.target['total']).toFixed(1);
-            d.tooltip = d.source.name + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.name + " " + format(d.value) + "(" + r2 + "%)";
+            d._tooltip = d.source.name + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.name + " " + format(d.value) + "(" + r2 + "%)";
+            console.log("tooltip", widget.def_tooltip)
+            if (widget.def_tooltip==true)
+              {
+                d.tooltip = d._tooltip;
+              }
+              else
+              {
+                d.tooltip = null;
+              }
           }
           var link = svg.append("g").selectAll(".link")
               .data(links)
@@ -587,12 +598,12 @@ define(["d3.v2.min.js"],function(d3){
               .attr("transform", null)
               .attr("fill", this.labelColor)
               .text(function(d) { return d.name; })
-            .filter(function(d) { return d.x < widget.width / 2; })
+            .filter(function(d) { return d.x < (parentDiv.offsetWidth|widget.width) / 2; })
               .attr("x", 6 + sankey.nodeWidth())
               .attr("text-anchor", "start");
           function dragmove(d) {
             if (d3.event.y != d3.event.y) return;
-            d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min(widget.height-marginSize - d.dy, d3.event.y))) + ")");
+            d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min((parentDiv.offsetHeight|widget.height)-marginSize - d.dy, d3.event.y))) + ")");
             sankey.relayout();
             link.attr("d", path);
           }
@@ -613,6 +624,11 @@ define(["d3.v2.min.js"],function(d3){
                 widget.updateModelValue('currentItem', null);
                 widget.updateSelectedItemVal(null);
                 widget.buildLinks(dgluxjs.getTableRows(value));
+            },
+            "def_tooltip": function(widget, value) {
+                widget.def_tooltip = value == true;
+                console.log ("def_toolip", widget.def_tooltip)
+                widget.buildLinks(widget.rows);
             },
             "nodeColor" : function (widget, value) {
               if (typeof value == 'string') {
