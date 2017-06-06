@@ -320,7 +320,7 @@ define(["d3.v2.min.js"],function(d3){
             this.sankey = d3.sankey()
               .nodeWidth(15)
               .nodePadding(10)
-              .size([div.offsetWidth | this.width, div.offsetHeight|this.height-marginSize]);
+              .size([div.offsetWidth | this.width, (div.offsetHeight|this.height)-marginSize]);
             this.path = this.sankey.link();
         }
         sankeyWidget.prototype.getDefinition = function () {
@@ -366,7 +366,7 @@ define(["d3.v2.min.js"],function(d3){
         sankeyWidget.prototype.onResize = function () {
           this.width = this.parentDiv.offsetWidth;
           this.height = this.parentDiv.offsetHeight;
-          this.sankey.size([this.parentDiv.offsetWidth | this.width, this.parentDiv.offsetHeight|this.height-marginSize]);
+          this.sankey.size([this.width, this.height-marginSize]);
           this.buildLinks(this.rows);
         }
 
@@ -534,7 +534,7 @@ define(["d3.v2.min.js"],function(d3){
             }
             widget.updateModelValue('currentLinkInfo',null);
           }
-          sankey.nodes(nodes).links(links).layout(32, this.parentDiv.offsetWidth | this.width, this.parentDiv.offsetHeight|this.height-marginSize);
+          sankey.nodes(nodes).links(links).layout(32, this.parentDiv.offsetWidth | this.width, (this.parentDiv.offsetHeight|this.height)-marginSize);
 
           for (var i = 0; i < links.length; ++i) {
             var d = links[i];
