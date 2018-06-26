@@ -442,22 +442,30 @@ define(["d3.v2.min.js"],function(d3){
         }
 
         sankeyWidget.prototype.buildLinks = function(rows) {
-          if (rows == null){
+         if (rows == null){
             rows = [];
           }
           this.rows = rows;
-         
+          if (!this.timeout) {
+              var widget = this;
+              this.timeout = setTimeout(function(){ widget.doBuildLinks()}, 1);
+          }
+        
+        }
+        sankeyWidget.prototype.doBuildLinks = function() {
+          this.timeout = null;
+          var rows = this.rows;
 
           // build names;
           var nameDict = {};
           var nodes = [];
           var links = [];
-          function addName(str) {
+          function addName(str, label) {
             if (nameDict.hasOwnProperty(str)){
               return;
             }
             nameDict[str] = nodes.length;
-            nodes.push({"name":str, "allIn":0, "allOut":0});
+            nodes.push({"name":str, "label":label, "allIn":0, "allOut":0});
           }
           for (var i = 0; i < rows.length; ++i) {
             var source = rows[i][1];
@@ -467,8 +475,14 @@ define(["d3.v2.min.js"],function(d3){
               source = source.toString();
               target = target.toString();
               if (source != target) {
-                addName(source);
-                addName(target);
+                if (rows[i].length > 4) {
+                  addName(source, rows[i][4]);
+                  addName(target, rows[i][5]);
+                } else {
+                  addName(source, source);
+                  addName(target, target);
+                }
+
                 nodes[nameDict[source]]['allOut'] += value;
                 nodes[nameDict[target]]['allIn'] += value;
                 links.push({"source":nameDict[source],"target":nameDict[target],"value":value,"idx":i});
@@ -540,7 +554,7 @@ define(["d3.v2.min.js"],function(d3){
             var d = links[i];
             var r1 = (d.value * 100/ d.source['total']).toFixed(1);
             var r2 = (d.value * 100/ d.target['total']).toFixed(1);
-            d._tooltip = d.source.name + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.name + " " + format(d.value) + "(" + r2 + "%)";
+            d._tooltip = d.source.label + " " + format(d.value) +  "(" + r1 + "%) → " + d.target.label + " " + format(d.value) + "(" + r2 + "%)";
             console.log("tooltip", widget.def_tooltip)
             if (widget.def_tooltip==true)
               {
@@ -588,19 +602,19 @@ define(["d3.v2.min.js"],function(d3){
               .attr("width", sankey.nodeWidth())
               .style("fill", this.nodeColor)
             .append("title")
-              .text(function(d) { return d.name + "\n" + format(d.value); });
+              .text(function(d) { return d.label + "\n" + format(d.value); });
 
           node.append("text")
               .attr("x", -6)
               .attr("y", function(d) { return d.dy / 2; })
               .attr("dy", ".35em")
-              .attr("text-anchor", "end")
+              .style("text-anchor", "end")
               .attr("transform", null)
               .attr("fill", this.labelColor)
-              .text(function(d) { return d.name; })
+              .text(function(d) { return d.label; })
             .filter(function(d) { return d.x < (parentDiv.offsetWidth|widget.width) / 2; })
               .attr("x", 6 + sankey.nodeWidth())
-              .attr("text-anchor", "start");
+              .style("text-anchor", "start");
           function dragmove(d) {
             if (d3.event.y != d3.event.y) return;
             d3.select(this).attr("transform", "translate(" + d.x + "," + (d.y = Math.max(0, Math.min((parentDiv.offsetHeight|widget.height)-marginSize - d.dy, d3.event.y))) + ")");
